@@ -101,3 +101,78 @@ select {
 .phone-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
+.serene-body {
+  font-family: Assistant, "Avenir Next", Avenir, "Helvetica Neue", sans-serif;
+  letter-spacing: 0;
+}
+
+.serene-display {
+  font-family: "Felix Titling", "Bodoni 72", Didot, "Times New Roman", serif;
+  font-weight: 400;
+}
+
+.serene-script {
+  font-family: "Month Glade", "Snell Roundhand", "Apple Chancery", cursive;
+  font-weight: 400;
+}
+
+.serene-label {
+  font-family: LagunaC, Assistant, "Avenir Next", Avenir, "Helvetica Neue", sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+}
+
+.serene-scroll {
+  scrollbar-width: none;
+}
+
+.serene-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.serene-reveal {
+  opacity: 0;
+  transform: translateY(46px);
+  transition:
+    opacity 800ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 800ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.serene-reveal.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.serene-hero-image {
+  animation: serene-drift 16s cubic-bezier(0.37, 0, 0.63, 1) infinite alternate;
+}
+
+.serene-scroll-cue {
+  animation: serene-scroll-cue 1.8s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+}
+
+@keyframes serene-drift {
+  from {
+    transform: scale(1.05) translate3d(-1.5%, 0, 0);
+  }
+
+  to {
+    transform: scale(1.12) translate3d(1.5%, -1%, 0);
+  }
+}
+
+@keyframes serene-scroll-cue {
+  0%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.55;
+  }
+
+  50% {
+    transform: translateY(4px);
+    opacity: 1;
+  }
+}

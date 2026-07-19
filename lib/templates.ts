@@ -36,6 +36,17 @@ export const INVITATION_TEMPLATES: TemplateDefinition[] = [
     allowedBlocks: ["hero", "couple", "story", "event", "countdown", "gallery", "rsvp", "gift", "guestbook"],
     accent: "#1f4054",
   },
+  {
+    id: "serene",
+    name: "Serene",
+    nameId: "Serene",
+    description: "A quiet editorial invitation with monochrome imagery, sage details, and cinematic full-screen pacing.",
+    descriptionId: "Undangan editorial yang tenang dengan foto monokrom, detail sage, dan alur sinematik layar penuh.",
+    interaction: "Editorial • Cinematic • Serene",
+    interactionId: "Editorial • Sinematik • Teduh",
+    allowedBlocks: ["hero", "story", "couple", "event", "gallery", "rsvp", "guestbook", "gift"],
+    accent: "#6c7c71",
+  },
 ];
 
 const blockCopy: Record<SectionId, { en: string; id: string; enDescription: string; idDescription: string }> = {

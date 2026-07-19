@@ -1,6 +1,8 @@
 export type Language = "EN" | "ID";
 
-export type RSVPStatus = "Attending" | "Not Attending" | "Pending";
+export type RSVPStatus = "Attending" | "Not Attending";
+
+export type GuestWishStatus = "review" | "published";
 
 export type GuestType = "personal" | "group";
 

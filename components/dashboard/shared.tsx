@@ -35,6 +35,7 @@ export function SectionHeading({
 
 export function AccordionSection({
   id,
+  index,
   isOpen,
   isVisible,
   onToggleOpen,
@@ -43,6 +44,7 @@ export function AccordionSection({
   children,
 }: {
   id: SectionId;
+  index?: number;
   isOpen: boolean;
   isVisible: boolean;
   onToggleOpen: () => void;
@@ -51,16 +53,26 @@ export function AccordionSection({
   children: ReactNode;
 }) {
   return (
-    <Card>
-      <div className="flex items-center">
+    <Card
+      className={cn(
+        "overflow-hidden transition-[border-color,box-shadow] duration-200",
+        isOpen && "border-primary/60 shadow-[0_8px_24px_rgba(24,25,37,0.05)]",
+      )}
+    >
+      <div className="p-3">
         <button
           type="button"
           onClick={onToggleOpen}
-          className="flex h-14 min-w-0 flex-1 items-center justify-between rounded-2xl px-5 text-left font-medium transition-colors hover:bg-[#fafafa] focus-visible:ring-2 focus-visible:ring-ring"
+          className="flex h-10 w-full min-w-0 items-center justify-between rounded-xl px-2 text-left font-medium transition-colors hover:bg-[#fafafa] focus-visible:ring-2 focus-visible:ring-ring"
           aria-expanded={isOpen}
         >
-          <span className="truncate">
-            {blockText(id, language).label}
+          <span className="flex min-w-0 items-center gap-3">
+            {typeof index === "number" && (
+              <span className="grid size-7 shrink-0 place-items-center rounded-full bg-[#f1f0ff] text-[11px] font-semibold text-[#625cc7]">
+                {String(index + 1).padStart(2, "0")}
+              </span>
+            )}
+            <span className="truncate">{blockText(id, language).label}</span>
           </span>
           <ChevronDown
             className={cn(
@@ -69,22 +81,27 @@ export function AccordionSection({
             )}
           />
         </button>
-        <div className="flex shrink-0 items-center gap-2 pr-4">
-          <span className="hidden text-xs text-muted-foreground min-[480px]:inline">
+        <div className="mt-1 flex items-center justify-between gap-3 rounded-xl bg-[#f7f6ff] px-3 py-2.5">
+          <span className="text-xs font-medium text-[#625cc7]">
+            {language === "ID" ? "Tampilkan bagian ini" : "Show this section"}
+          </span>
+          <div className="flex shrink-0 items-center gap-2">
+            <span className="hidden text-xs text-muted-foreground min-[480px]:inline">
             {isVisible
               ? language === "ID" ? "Tampil" : "Shown"
               : language === "ID" ? "Tersembunyi" : "Hidden"}
-          </span>
-          <Switch
-            data-testid={`section-visibility-${id}`}
-            checked={isVisible}
-            onCheckedChange={onToggleVisible}
-            aria-label={`${tr(language, "showSection")}: ${blockText(id, language).label}`}
-          />
+            </span>
+            <Switch
+              data-testid={`section-visibility-${id}`}
+              checked={isVisible}
+              onCheckedChange={onToggleVisible}
+              aria-label={`${tr(language, "showSection")}: ${blockText(id, language).label}`}
+            />
+          </div>
         </div>
       </div>
       {isOpen && (
-        <CardContent className="grid gap-4 border-t pt-4">
+        <CardContent className="grid gap-4 border-t bg-[#fdfdff] p-5">
           <p className="text-sm leading-5 text-muted-foreground">
             {blockText(id, language).description}
           </p>
