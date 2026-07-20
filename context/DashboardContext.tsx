@@ -16,6 +16,7 @@ import type {
   WABlastInput,
   WABlastRecipientStatus,
   WorkspaceCreationInput,
+  WorkspacePlanName,
   WorkspaceSummary,
 } from "@/components/dashboard/types";
 import type { GuestWishStatus, Language } from "@/lib/types";
@@ -64,6 +65,7 @@ type DashboardContextValue = {
   activeWorkspaceId: string;
   setActiveWorkspaceId: (id: string) => void;
   createWorkspace: (input: WorkspaceCreationInput) => string;
+  setWorkspacePlan: (plan: WorkspacePlanName) => void;
   guests: GuestWithId[];
   guestLabels: GuestLabel[];
   addGuest: (guest: Guest) => void;
@@ -207,6 +209,13 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     setActiveMenu("overview");
     return id;
   }, [setActiveMenu]);
+
+  const setWorkspacePlan = useCallback((plan: WorkspacePlanName) => {
+    updateActiveWorkspace((workspace) => ({
+      ...workspace,
+      summary: { ...workspace.summary, packageName: plan },
+    }));
+  }, [updateActiveWorkspace]);
 
   const setField = useCallback((field: keyof InvitationData, value: string) => {
     updateActiveWorkspace((workspace) => ({
@@ -435,6 +444,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     activeWorkspaceId,
     setActiveWorkspaceId,
     createWorkspace,
+    setWorkspacePlan,
     guests,
     guestLabels,
     addGuest,
@@ -472,6 +482,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     activeWorkspaceId,
     setActiveWorkspaceId,
     createWorkspace,
+    setWorkspacePlan,
     guests,
     guestLabels,
     addGuest,

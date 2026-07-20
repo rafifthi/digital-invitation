@@ -6,7 +6,6 @@ import {
   CalendarClock,
   Check,
   CheckCircle2,
-  ChevronDown,
   Circle,
   CircleDot,
   Copy,
@@ -17,7 +16,6 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { cn } from "@/lib/utils";
 import {
   INVITATION_DOMAIN,
   invitationHost,
@@ -50,6 +48,8 @@ export function OverviewPanel({
   venueName,
   language,
   onNavigate,
+  onOpenEventSettings,
+  onOpenPlanSettings,
   packageName,
 }: {
   slug: string;
@@ -60,9 +60,10 @@ export function OverviewPanel({
   venueName: string;
   language: Language;
   onNavigate: (menu: MenuId) => void;
+  onOpenEventSettings: () => void;
+  onOpenPlanSettings: () => void;
   packageName: WorkspacePlanName;
 }) {
-  const [showPlans, setShowPlans] = useState(false);
   const countdown = useCountdown(weddingDate);
   const isId = language === "ID";
   const totalGuests = ATTENDANCE_DATA.reduce((total, item) => total + item.count, 0);
@@ -175,16 +176,21 @@ export function OverviewPanel({
           </div>
         </section>
 
-        <section className="relative col-span-5 overflow-hidden rounded-3xl bg-[#181925] p-6 text-[#fefeff] max-[980px]:col-span-1">
-          <div className="absolute -right-12 -top-16 size-48 rounded-full border border-[#918df6]/25" />
-          <div className="absolute -right-4 -top-8 size-28 rounded-full border border-[#918df6]/30" />
-          <div className="relative">
+        <button
+          type="button"
+          onClick={onOpenEventSettings}
+          className="group relative col-span-5 overflow-hidden rounded-3xl bg-[#181925] p-6 text-left text-[#fefeff] outline-none transition-[box-shadow,transform] duration-200 hover:-translate-y-0.5 hover:shadow-[0_12px_30px_rgba(24,25,37,0.16)] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 max-[980px]:col-span-1"
+          aria-label={isId ? "Buka pengaturan acara" : "Open event settings"}
+        >
+          <span className="absolute -right-12 -top-16 size-48 rounded-full border border-[#918df6]/25" />
+          <span className="absolute -right-4 -top-8 size-28 rounded-full border border-[#918df6]/30" />
+          <span className="relative block">
             <div className="flex items-center justify-between gap-3">
               <span className="grid size-10 place-items-center rounded-full bg-[#2c2d3b] text-[#bdb9ff]">
                 <CalendarClock className="size-4" />
               </span>
-              <span className="rounded-full bg-[#2c2d3b] px-3 py-1 text-xs text-[#d8d5ff]">
-                {isId ? "Acara utama" : "Main event"}
+              <span className="flex items-center gap-2 rounded-full bg-[#2c2d3b] px-3 py-1 text-xs text-[#d8d5ff]">
+                {isId ? "Acara utama" : "Main event"} <ArrowUpRight className="size-3.5 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
               </span>
             </div>
             <p className="mt-7 text-sm text-[#aaaab7]">{eventDate}</p>
@@ -196,9 +202,9 @@ export function OverviewPanel({
                 <p className="mt-1 text-sm leading-5 text-[#aaaab7]">
                   {isId ? "Perbarui tanggal acara untuk memulai countdown baru." : "Update the event date to start a new countdown."}
                 </p>
-                <Button type="button" variant="secondary" size="sm" className="mt-4" onClick={() => onNavigate("settings")}>
-                  {isId ? "Ubah tanggal" : "Update date"}
-                </Button>
+                <span className="mt-4 inline-flex items-center gap-2 text-xs font-medium text-[#d8d5ff]">
+                  {isId ? "Ubah tanggal" : "Update date"} <ArrowUpRight className="size-3.5" />
+                </span>
               </div>
             ) : (
               <div className="mt-8 grid grid-cols-3 gap-2" aria-label={isId ? "Hitung mundur acara" : "Event countdown"}>
@@ -207,8 +213,8 @@ export function OverviewPanel({
                 <CountdownUnit value={countdown?.minutes} label={isId ? "Menit" : "Minutes"} />
               </div>
             )}
-          </div>
-        </section>
+          </span>
+        </button>
       </div>
 
       <div className="grid grid-cols-12 items-start gap-5 max-[980px]:grid-cols-1">
@@ -249,14 +255,23 @@ export function OverviewPanel({
           </div>
         </section>
 
-        <section id="current-package" className="col-span-5 scroll-mt-6 rounded-3xl border bg-white p-6 max-[980px]:col-span-1">
+        <button
+          id="current-package"
+          type="button"
+          onClick={onOpenPlanSettings}
+          className="group col-span-5 scroll-mt-6 rounded-3xl border bg-white p-6 text-left outline-none transition-[border-color,box-shadow,transform] duration-200 hover:-translate-y-0.5 hover:border-[#c9c7f8] hover:shadow-[0_12px_30px_rgba(24,25,37,0.08)] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 max-[980px]:col-span-1"
+          aria-label={isId ? "Kelola paket dan pembayaran" : "Manage plan and payment"}
+        >
           <div className="flex items-start justify-between gap-4">
             <span className="grid size-10 place-items-center rounded-full bg-[#fff4d9] text-[#8f5d00]">
               <Crown className="size-4" />
             </span>
-            <Badge className="border-0 bg-[#def6e4] text-[#247f3b]">
-              {isId ? "Aktif" : "Active"}
-            </Badge>
+            <span className="flex items-center gap-2">
+              <Badge className="border-0 bg-[#def6e4] text-[#247f3b]">
+                {isId ? "Aktif" : "Active"}
+              </Badge>
+              <ArrowUpRight className="size-4 text-muted-foreground transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+            </span>
           </div>
           <p className="mt-5 text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
             {isId ? "Paket saat ini" : "Current package"}
@@ -277,35 +292,11 @@ export function OverviewPanel({
             <PackageFeature text={planCreditFeature(currentPlan.credits, language)} />
             <PackageFeature text={isId ? "Subdomain kustom" : "Custom subdomain"} />
           </ul>
-
-          <Button
-            type="button"
-            variant="secondary"
-            className="mt-6 w-full"
-            onClick={() => setShowPlans((current) => !current)}
-            aria-expanded={showPlans}
-          >
-            {isId ? "Bandingkan paket" : "Compare plans"}
-            <ChevronDown className={cn("transition-transform", showPlans && "rotate-180")} />
-          </Button>
-
-          {showPlans && (
-            <div className="mt-4 divide-y rounded-2xl border bg-[#fafafa] px-4">
-              {WORKSPACE_PLANS.map((plan) => (
-                <div key={plan.name} className="flex items-center gap-3 py-3">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <strong className="text-sm font-medium">{plan.name}</strong>
-                      {plan.name === packageName && <span className="text-[10px] font-medium uppercase tracking-wider text-[#625cc7]">{isId ? "Saat ini" : "Current"}</span>}
-                    </div>
-                    <span className="text-xs text-muted-foreground">{plan.guests}</span>
-                  </div>
-                  <span className="text-sm font-semibold">{plan.price}</span>
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
+          <span className="mt-6 inline-flex items-center gap-2 text-sm font-medium text-[#625cc7]">
+            {isId ? "Kelola paket & pembayaran" : "Manage plan & payment"}
+            <ArrowUpRight className="size-4" />
+          </span>
+        </button>
       </div>
     </section>
   );

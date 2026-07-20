@@ -37,6 +37,16 @@ export function AuthShell({ eyebrow, title, description, children }: { eyebrow: 
           </div>
         </div>
       </section>
+
+      <aside
+        aria-label="Demo credentials"
+        className="fixed bottom-4 right-4 z-50 rounded-xl border border-[#d9d7ff] bg-[#fefeff] px-5 py-4 text-sm text-[#181925] shadow-[0_8px_24px_rgba(24,25,37,0.12)] max-[560px]:left-4 max-[560px]:right-4"
+      >
+        <ol className="list-decimal space-y-1 pl-5">
+          <li>Email: demo@example.com</li>
+          <li>Password: password</li>
+        </ol>
+      </aside>
     </main>
   );
 }

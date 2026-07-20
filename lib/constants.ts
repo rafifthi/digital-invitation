@@ -1,5 +1,5 @@
 import type { ElementType } from "react";
-import { LayoutDashboard, Settings, Sparkles, UserCog, Users } from "lucide-react";
+import { LayoutDashboard, Settings, Sparkles, Users } from "lucide-react";
 import type { MenuId, InvitationData, InvitationEvent, Guest, GuestLabel, WorkspacePlanName, WorkspaceSummary } from "@/components/dashboard/types";
 import type { RSVPStatus } from "@/lib/types";
 
@@ -21,7 +21,6 @@ export const MENU_ITEMS: Array<{
     ],
   },
   { id: "settings", label: "Invitation Settings", icon: Settings },
-  { id: "account", label: "Account", icon: UserCog },
 ];
 
 export const DEFAULT_INVITATION: InvitationData = {

@@ -1,12 +1,14 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { usePathname } from "next/navigation";
 import { DashboardProvider, useDashboard } from "@/context";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { AppSidebar } from "./sidebar";
 import { Topbar } from "./topbar";
 import { DashboardRouteSkeleton } from "./dashboard-route-skeleton";
+import { AccountSettingsSidebar, accountSettingsTitle } from "./settings-sidebar";
 
 export function DashboardShell({ children }: { children: ReactNode }) {
   return (
@@ -19,6 +21,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
 }
 
 function DashboardShellContent({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
   const {
     activeMenu,
     setActiveMenu,
@@ -31,21 +34,27 @@ function DashboardShellContent({ children }: { children: ReactNode }) {
     setActiveWorkspaceId,
     createWorkspace,
   } = useDashboard();
+  const isAccountSettingsArea = pathname === "/account"
+    || pathname.startsWith("/account/");
 
   return (
     <>
-      <AppSidebar
-        activeMenu={activeMenu}
-        onSelect={setActiveMenu}
-        language={language}
-        workspaces={workspaces}
-        activeWorkspaceId={activeWorkspaceId}
-        onWorkspaceSelect={setActiveWorkspaceId}
-        onWorkspaceCreate={createWorkspace}
-      />
+      {isAccountSettingsArea ? (
+        <AccountSettingsSidebar language={language} />
+      ) : (
+        <AppSidebar
+          activeMenu={activeMenu}
+          onSelect={setActiveMenu}
+          language={language}
+          workspaces={workspaces}
+          activeWorkspaceId={activeWorkspaceId}
+          onWorkspaceSelect={setActiveWorkspaceId}
+          onWorkspaceCreate={createWorkspace}
+        />
+      )}
       <SidebarInset className="h-svh min-h-0 overflow-hidden">
         <Topbar
-          activeTitle={activeTitle}
+          activeTitle={isAccountSettingsArea ? accountSettingsTitle(pathname, language) : activeTitle}
           language={language}
           onLanguageChange={setLanguage}
           onProfileClick={() => setActiveMenu("account")}

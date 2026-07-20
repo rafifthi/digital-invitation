@@ -10,7 +10,6 @@ import {
 import {
   Sidebar,
   SidebarContent,
-  SidebarFooter,
   SidebarGroup,
   SidebarHeader,
   SidebarMenu,
@@ -26,7 +25,7 @@ import type { MenuId, WorkspaceCreationInput, WorkspaceSummary } from "./types";
 import { MENU_ITEMS } from "@/lib/constants";
 import { DASHBOARD_ROUTES } from "@/lib/dashboard-routes";
 import type { Language } from "@/lib/types";
-import { menuLabel, tr } from "@/lib/i18n";
+import { menuLabel } from "@/lib/i18n";
 import { WorkspaceCreatorDialog } from "./workspace-creator-dialog";
 
 export function AppSidebar({
@@ -214,21 +213,6 @@ export function AppSidebar({
           </SidebarGroup>
         </SidebarContent>
 
-        <SidebarFooter className="border-t border-sidebar-border p-3 group-data-[collapsible=icon]/sidebar:hidden">
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton size="lg" className="hover:bg-white" onClick={() => handleSelect("account")} tooltip={tr(language, "accountSettings")}>
-                <div className="flex aspect-square size-8 items-center justify-center rounded-full bg-[#181925] text-[#fefeff]">
-                  <span className="text-xs font-semibold">RM</span>
-                </div>
-                <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-semibold">{isId ? "Akun saya" : "My account"}</span>
-                  <span className="truncate text-xs text-muted-foreground">{tr(language, "accountSettings")}</span>
-                </div>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          </SidebarMenu>
-        </SidebarFooter>
       </Sidebar>
 
       <WorkspaceCreatorDialog
