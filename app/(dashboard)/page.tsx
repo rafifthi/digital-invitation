@@ -3,8 +3,10 @@
 import { DashboardPageFrame } from "@/components/dashboard/dashboard-page-frame";
 import { OverviewPanel } from "@/components/dashboard/overview-panel";
 import { useDashboard } from "@/context";
+import { useRouter } from "next/navigation";
 
 export default function DashboardHomePage() {
+  const router = useRouter();
   const {
     invitation,
     event,
@@ -29,6 +31,8 @@ export default function DashboardHomePage() {
         venueName={event.venueName}
         language={language}
         onNavigate={setActiveMenu}
+        onOpenEventSettings={() => router.push("/settings?tab=event")}
+        onOpenPlanSettings={() => router.push("/account/plan")}
         packageName={activeWorkspace.packageName}
       />
     </DashboardPageFrame>

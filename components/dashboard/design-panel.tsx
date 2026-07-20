@@ -108,13 +108,6 @@ export function DesignPanel({
     window.setTimeout(() => setLinkCopied(false), 1400);
   };
 
-  const focusPreview = () => {
-    document.getElementById("invitation-preview")?.scrollIntoView({
-      behavior: "smooth",
-      block: "start",
-    });
-  };
-
   const tools = [
     { id: "theme" as const, icon: LayoutTemplate, label: language === "ID" ? "Ganti Tema" : "Change Theme" },
     { id: "palette" as const, icon: Palette, label: language === "ID" ? "Warna Tema" : "Theme Color" },
@@ -266,9 +259,11 @@ export function DesignPanel({
             </div>
           </div>
           <div className="ml-auto flex shrink-0 items-center gap-2">
-            <Button type="button" variant="secondary" onClick={focusPreview}>
-              <Eye />
-              {language === "ID" ? "Preview Tema" : "Theme Preview"}
+            <Button asChild variant="secondary">
+              <a href={invitationUrl(invitation.customSlug)} target="_blank" rel="noopener noreferrer">
+                <Eye />
+                {language === "ID" ? "Preview Tema" : "Theme Preview"}
+              </a>
             </Button>
             <Button type="button" onClick={publishChanges}>
               {published ? <Check /> : <Save />}

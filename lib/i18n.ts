@@ -5,7 +5,7 @@ const copy = {
   EN: {
     search: "Search...",
     notifications: "Notifications",
-    profile: "Open account settings",
+    profile: "Open account menu",
     weddingWorkspace: "Wedding workspace",
     invitedGuests: "143 invited guests",
     accountSettings: "Account settings",
@@ -53,7 +53,7 @@ const copy = {
   ID: {
     search: "Cari...",
     notifications: "Notifikasi",
-    profile: "Buka pengaturan akun",
+    profile: "Buka menu akun",
     weddingWorkspace: "Ruang kerja pernikahan",
     invitedGuests: "143 tamu diundang",
     accountSettings: "Pengaturan akun",

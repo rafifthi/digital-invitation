@@ -4,8 +4,8 @@ export const AUTH_COOKIE_NAME = "riuh_session";
 
 const FALLBACK_ACCOUNT = {
   name: "Rafif & Kanza",
-  email: "demo@riuhmerekah.com",
-  password: "riuh-demo-2026",
+  email: "demo@example.com",
+  password: "password",
   sessionToken: "riuh-local-demo-session",
 };
 

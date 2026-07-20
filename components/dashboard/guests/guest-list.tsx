@@ -360,10 +360,10 @@ function ColoredLabels({ names, definitions, isId }: { names: string[]; definiti
 
 function RsvpBadge({ status, isId }: { status: GuestWithId["rsvp"]; isId: boolean }) {
   if (!status) {
-    return <Badge variant="outline" className="border-[#ead9aa] bg-[#fff9e8] text-[#8a6512]">{isId ? "Belum confirm" : "Not confirmed"}</Badge>;
+    return <Badge variant="outline" className="border-[#ead9aa] bg-[#fff9e8] text-[#8a6512] transition-none">{isId ? "Belum confirm" : "Not confirmed"}</Badge>;
   }
   const label = status === "Attending" ? (isId ? "Hadir" : "Attend") : (isId ? "Tidak hadir" : "Not attend");
-  return <Badge className={RSVP_STATUS_STYLES[status]}>{label}</Badge>;
+  return <Badge variant="outline" className={`${RSVP_STATUS_STYLES[status]} transition-none`}>{label}</Badge>;
 }
 
 function buildGuestMessage(guest: GuestWithId, invitationHost: string, template: string) {

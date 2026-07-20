@@ -11,6 +11,6 @@ export const DASHBOARD_ROUTES: Record<MenuId, string> = {
 
 export function menuFromPathname(pathname: string): MenuId {
   const match = (Object.entries(DASHBOARD_ROUTES) as Array<[MenuId, string]>)
-    .find(([, route]) => route === pathname);
+    .find(([, route]) => route === pathname || (route !== "/" && pathname.startsWith(`${route}/`)));
   return match?.[0] ?? "overview";
 }
