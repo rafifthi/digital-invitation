@@ -87,13 +87,15 @@ export const RSVP_LABELS: Record<RSVPStatus, string> = {
   "Not Attending": "Not attend",
 };
 
-export const GUEST_LABEL_COLORS = ["#625cc7", "#247f3b", "#b66b00", "#b33b75", "#2c78a8", "#8a4f3d"] as const;
+export const GUEST_LABEL_COLORS = ["#625cc7", "#247f3b", "#b66b00", "#b33b75", "#2c78a8", "#8a4f3d", "#5d6fc4"] as const;
 
 export const DEFAULT_GUEST_LABELS: GuestLabel[] = [
   { id: "label-vip", name: "VIP", color: GUEST_LABEL_COLORS[0] },
   { id: "label-family", name: "Family", color: GUEST_LABEL_COLORS[1] },
   { id: "label-work", name: "Work", color: GUEST_LABEL_COLORS[2] },
   { id: "label-friend", name: "Friend", color: GUEST_LABEL_COLORS[4] },
+  { id: "label-college", name: "College", color: GUEST_LABEL_COLORS[6] },
+  { id: "label-neighbor", name: "Neighbor", color: GUEST_LABEL_COLORS[5] },
   { id: "label-rsvp", name: "RSVP", color: GUEST_LABEL_COLORS[3] },
 ];
 
@@ -101,6 +103,8 @@ export const MOCK_GUESTS: Array<Guest & { id: string }> = [
   {
     id: "g-001",
     type: "personal",
+    side: "bride",
+    planningStatus: "approved",
     vip: true,
     salutation: "Mr.",
     name: "Nadia Putri",
@@ -115,6 +119,8 @@ export const MOCK_GUESTS: Array<Guest & { id: string }> = [
   {
     id: "g-002",
     type: "group",
+    side: "groom",
+    planningStatus: "review",
     vip: false,
     salutation: "",
     name: "Raka & Family",
@@ -129,6 +135,8 @@ export const MOCK_GUESTS: Array<Guest & { id: string }> = [
   {
     id: "g-003",
     type: "personal",
+    side: "groom",
+    planningStatus: "candidate",
     vip: false,
     salutation: "",
     name: "Bagas Pratama",
@@ -143,6 +151,8 @@ export const MOCK_GUESTS: Array<Guest & { id: string }> = [
   {
     id: "g-004",
     type: "personal",
+    side: "bride",
+    planningStatus: "approved",
     vip: true,
     salutation: "Mrs. & Mr.",
     name: "Indah & Reza",
@@ -153,6 +163,70 @@ export const MOCK_GUESTS: Array<Guest & { id: string }> = [
     wish: "Turut berbahagia untuk Rafif dan Kanza. Semoga menjadi keluarga yang penuh cinta.",
     wishStatus: "published",
     wishSubmittedAt: "2026-07-15T13:10:00+07:00",
+  },
+  {
+    id: "g-005",
+    type: "personal",
+    side: "bride",
+    planningStatus: "candidate",
+    vip: false,
+    salutation: "Ms.",
+    name: "Salsa Maharani",
+    pax: 1,
+    rsvp: null,
+    labels: ["College", "Friend"],
+    whatsapp: "+62 812 7788 3401",
+    wish: "",
+    wishStatus: null,
+    wishSubmittedAt: null,
+  },
+  {
+    id: "g-006",
+    type: "group",
+    side: "groom",
+    planningStatus: "approved",
+    vip: true,
+    salutation: "Mr. & Mrs.",
+    name: "Hendra & Family",
+    pax: 4,
+    rsvp: "Attending",
+    labels: ["VIP", "Family"],
+    whatsapp: "+62 811 3400 8821",
+    wish: "Semoga persiapan menuju hari bahagia selalu dimudahkan.",
+    wishStatus: "published",
+    wishSubmittedAt: "2026-07-17T10:20:00+07:00",
+  },
+  {
+    id: "g-007",
+    type: "group",
+    side: "bride",
+    planningStatus: "review",
+    vip: false,
+    salutation: "",
+    name: "Aurora Marketing Team",
+    pax: 4,
+    rsvp: null,
+    labels: ["Work"],
+    whatsapp: "+62 857 8801 4432",
+    wish: "",
+    wishStatus: null,
+    wishSubmittedAt: null,
+  },
+  {
+    id: "g-008",
+    type: "personal",
+    side: "groom",
+    planningStatus: "removed",
+    vip: false,
+    salutation: "Mr.",
+    name: "Dimas Saputra",
+    pax: 1,
+    rsvp: null,
+    labels: ["Neighbor"],
+    whatsapp: "+62 813 6654 9021",
+    wish: "",
+    wishStatus: null,
+    wishSubmittedAt: null,
   },
 ];
 

@@ -84,6 +84,8 @@ export type WorkspaceCreationInput = {
 
 export type Guest = {
   type: GuestType;
+  side: GuestSide;
+  planningStatus: GuestPlanningStatus;
   vip: boolean;
   salutation: string;
   name: string;
@@ -97,6 +99,65 @@ export type Guest = {
 };
 
 export type GuestWithId = Guest & { id: string };
+
+export type GuestSide = "groom" | "bride";
+
+export type GuestReviewFilterSide = GuestSide | "all";
+
+export type GuestPlanningStatus = "candidate" | "approved" | "review" | "removed";
+
+export type GuestCapacityPlan = {
+  maxPax: number;
+  groomPercent: number;
+};
+
+export type GuestReviewMode = "digital" | "print";
+
+export type GuestReviewSessionStatus = "active" | "completed" | "reconciling" | "closed";
+
+export type GuestReviewItem = {
+  guestId: string;
+  name: string;
+  pax: number;
+  type: GuestType;
+  side: GuestSide;
+  labels: string[];
+  decision: GuestPlanningStatus;
+  decidedAt: string | null;
+};
+
+export type GuestReviewAttachment = {
+  id: string;
+  name: string;
+  type: string;
+  dataUrl: string;
+  uploadedAt: string;
+};
+
+export type GuestReviewSession = {
+  id: string;
+  token: string;
+  workspaceId: string;
+  reviewerName: string;
+  side: GuestSide;
+  mode: GuestReviewMode;
+  filterSide?: GuestReviewFilterSide;
+  filterLabels?: string[];
+  filtersApplied?: boolean;
+  capacityPlan: GuestCapacityPlan;
+  status: GuestReviewSessionStatus;
+  createdAt: string;
+  completedAt: string | null;
+  items: GuestReviewItem[];
+  attachments: GuestReviewAttachment[];
+};
+
+export type CreateGuestReviewSessionInput = {
+  reviewerName: string;
+  filterSide: GuestReviewFilterSide;
+  filterLabels: string[];
+  guestIds: string[];
+};
 
 export type GuestLabel = {
   id: string;

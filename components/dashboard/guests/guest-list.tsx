@@ -3,13 +3,16 @@
 import { useMemo, useState } from "react";
 import {
   Check,
+  ClipboardCheck,
   Copy,
-  Crown,
+  ListPlus,
   MessageCircle,
   MessageSquareText,
+  RotateCcw,
   Search,
   Trash2,
   User,
+  UserMinus,
   Users,
   X,
 } from "lucide-react";
@@ -35,30 +38,62 @@ import {
 import { useDashboard } from "@/context";
 import { RSVP_STATUS_STYLES } from "@/lib/constants";
 import { invitationUrl } from "@/lib/invitation-url";
+import { guestSideLabel } from "@/lib/guest-planning";
 import { MessageTemplateDialog } from "./message-template-dialog";
 import type { GuestLabel, GuestWithId } from "../types";
+
+type GuestStatusTab = "guest-list" | "removed" | "review";
 
 type GuestListProps = {
   onAddGuest: () => void;
   onStartBlast: (recipientIds: string[]) => void;
+  onStartReview: (guestIds: string[]) => void;
 };
 
-export function GuestList({ onAddGuest, onStartBlast }: GuestListProps) {
-  const { guests, guestLabels, language, invitation, waTemplate, deleteGuests } = useDashboard();
+export function GuestList({ onAddGuest, onStartBlast, onStartReview }: GuestListProps) {
+  const {
+    guests,
+    guestLabels,
+    language,
+    invitation,
+    waTemplate,
+    deleteGuests,
+    setGuestsPlanningStatus,
+  } = useDashboard();
   const [selectedGuestId, setSelectedGuestId] = useState<string | null>(null);
   const [selectedRecipientIds, setSelectedRecipientIds] = useState<string[]>([]);
   const [copiedGuestId, setCopiedGuestId] = useState<string | null>(null);
   const [deleteConfirmation, setDeleteConfirmation] = useState(false);
   const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const [statusTab, setStatusTab] = useState<GuestStatusTab>("guest-list");
   const isId = language === "ID";
   const selectedGuest = guests.find((guest) => guest.id === selectedGuestId) ?? null;
+  const statusTabs: Array<{ id: GuestStatusTab; label: string; count: number }> = [
+    {
+      id: "guest-list",
+      label: "Guest List",
+      count: guests.filter((guest) => guest.planningStatus !== "removed" && guest.planningStatus !== "review").length,
+    },
+    { id: "removed", label: "Removed", count: guests.filter((guest) => guest.planningStatus === "removed").length },
+    { id: "review", label: "To Review", count: guests.filter((guest) => guest.planningStatus === "review").length },
+  ];
   const filteredGuests = useMemo(() => {
+    const guestsInTab = guests.filter((guest) => {
+      if (statusTab === "removed") return guest.planningStatus === "removed";
+      if (statusTab === "review") return guest.planningStatus === "review";
+      return guest.planningStatus !== "removed" && guest.planningStatus !== "review";
+    });
     const needle = query.trim().toLocaleLowerCase();
-    if (!needle) return guests;
-    return guests.filter((guest) => [guest.name, guest.whatsapp, ...guest.labels]
+    if (!needle) return guestsInTab;
+    return guestsInTab.filter((guest) => [
+      guest.name,
+      guest.whatsapp,
+      guestSideLabel(guest.side, isId),
+      ...guest.labels,
+    ]
       .some((value) => value.toLocaleLowerCase().includes(needle)));
-  }, [guests, query]);
+  }, [guests, isId, query, statusTab]);
   const allVisibleSelected = filteredGuests.length > 0
     && filteredGuests.every((guest) => selectedRecipientIds.includes(guest.id));
 
@@ -93,6 +128,18 @@ export function GuestList({ onAddGuest, onStartBlast }: GuestListProps) {
     setDeleteConfirmation(false);
   };
 
+  const changeStatusTab = (nextTab: GuestStatusTab) => {
+    setStatusTab(nextTab);
+    setSelectedRecipientIds([]);
+    setDeleteConfirmation(false);
+  };
+
+  const moveSelectedGuests = (planningStatus: GuestWithId["planningStatus"]) => {
+    setGuestsPlanningStatus(selectedRecipientIds, planningStatus);
+    setSelectedRecipientIds([]);
+    setDeleteConfirmation(false);
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -111,54 +158,105 @@ export function GuestList({ onAddGuest, onStartBlast }: GuestListProps) {
         </div>
       </div>
 
-      {selectedRecipientIds.length > 0 && (
-        <div className="flex min-h-14 flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#d9d7ff] bg-[#f8f7ff] px-4 py-3" aria-live="polite">
-          {deleteConfirmation ? (
-            <>
-              <p className="text-sm font-medium">
-                {isId ? `Hapus ${selectedRecipientIds.length} tamu terpilih?` : `Delete ${selectedRecipientIds.length} selected guests?`}
-              </p>
-              <div className="flex gap-2">
+      <div className="flex max-w-full gap-1 overflow-x-auto rounded-2xl border bg-muted/25 p-1" role="tablist" aria-label={isId ? "Filter status tamu" : "Guest status filters"}>
+        {statusTabs.map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            role="tab"
+            aria-selected={statusTab === tab.id}
+            onClick={() => changeStatusTab(tab.id)}
+            className={`inline-flex shrink-0 items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+              statusTab === tab.id
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground hover:bg-background/60 hover:text-foreground"
+            }`}
+          >
+            {tab.label}
+            <span className={`rounded-full px-1.5 py-0.5 text-[11px] leading-none ${
+              statusTab === tab.id ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
+            }`}>
+              {tab.count}
+            </span>
+          </button>
+        ))}
+      </div>
+
+      <div className="flex min-h-10 flex-wrap items-center gap-3">
+        <div className="relative w-full max-w-md sm:min-w-72 sm:flex-1">
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder={isId ? "Cari nama, pihak, atau label" : "Search name, side, or label"}
+            aria-label={isId ? "Cari tamu" : "Search guests"}
+            className="pl-9"
+          />
+        </div>
+
+        {selectedRecipientIds.length > 0 && (
+          <div className="ml-auto flex flex-wrap items-center justify-end gap-2" aria-live="polite">
+            {deleteConfirmation ? (
+              <>
+                <p className="mr-1 text-sm font-medium">
+                  {isId ? `Hapus permanen ${selectedRecipientIds.length} tamu?` : `Permanently delete ${selectedRecipientIds.length} guests?`}
+                </p>
                 <Button type="button" variant="ghost" size="sm" onClick={() => setDeleteConfirmation(false)}>
                   <X className="size-4" /> {isId ? "Batal" : "Cancel"}
                 </Button>
                 <Button type="button" variant="outline" size="sm" className="border-[#efc0b4] text-[#b62d00] hover:bg-[#fff1ec] hover:text-[#9b2600]" onClick={removeSelectedGuests}>
-                  <Trash2 className="size-4" /> {isId ? "Hapus" : "Delete"}
+                  <Trash2 className="size-4" /> {isId ? "Hapus permanen" : "Delete permanently"}
                 </Button>
-              </div>
-            </>
-          ) : (
-            <>
-              <p className="text-sm font-medium">
-                {selectedRecipientIds.length} {isId ? "tamu dipilih" : "guests selected"}
-              </p>
-              <div className="flex gap-2">
-                <Button type="button" size="sm" onClick={() => onStartBlast(selectedRecipientIds)}>
-                  <MessageCircle className="size-4" /> WA Blast
-                </Button>
-                <Button type="button" variant="outline" size="sm" onClick={() => setDeleteConfirmation(true)}>
-                  <Trash2 className="size-4" /> {isId ? "Hapus" : "Delete"}
-                </Button>
-              </div>
-            </>
-          )}
-        </div>
-      )}
-
-      <div className="relative max-w-md">
-        <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder={isId ? "Cari nama, WhatsApp, atau label" : "Search name, WhatsApp, or label"}
-          aria-label={isId ? "Cari tamu" : "Search guests"}
-          className="pl-9"
-        />
+              </>
+            ) : (
+              <>
+                <p className="mr-1 text-sm font-medium">
+                  {selectedRecipientIds.length} {isId ? "tamu dipilih" : "guests selected"}
+                </p>
+                {statusTab !== "removed" && (
+                  <Button type="button" size="sm" variant="secondary" onClick={() => onStartReview(selectedRecipientIds)}>
+                    <ClipboardCheck className="size-4" /> Card Sorting
+                  </Button>
+                )}
+                {statusTab === "guest-list" && (
+                  <Button type="button" size="sm" onClick={() => onStartBlast(selectedRecipientIds)}>
+                    <MessageCircle className="size-4" /> WA Blast
+                  </Button>
+                )}
+                {statusTab === "review" && (
+                  <Button type="button" size="sm" onClick={() => moveSelectedGuests("approved")}>
+                    <ListPlus className="size-4" /> {isId ? "Masuk Guest List" : "Add to Guest List"}
+                  </Button>
+                )}
+                {statusTab === "removed" && (
+                  <Button type="button" size="sm" onClick={() => moveSelectedGuests("approved")}>
+                    <RotateCcw className="size-4" /> {isId ? "Pulihkan ke Guest List" : "Restore to Guest List"}
+                  </Button>
+                )}
+                {statusTab === "guest-list" && (
+                  <Button type="button" variant="outline" size="sm" onClick={() => moveSelectedGuests("review")}>
+                    <Search className="size-4" /> {isId ? "Tinjau lagi" : "To Review"}
+                  </Button>
+                )}
+                {statusTab !== "removed" && (
+                  <Button type="button" variant="outline" size="sm" className="border-[#efc0b4] text-[#b62d00] hover:bg-[#fff1ec] hover:text-[#9b2600]" onClick={() => moveSelectedGuests("removed")}>
+                    <UserMinus className="size-4" /> {isId ? "Coret" : "Remove"}
+                  </Button>
+                )}
+                {statusTab === "removed" && (
+                  <Button type="button" variant="outline" size="sm" className="border-[#efc0b4] text-[#b62d00] hover:bg-[#fff1ec] hover:text-[#9b2600]" onClick={() => setDeleteConfirmation(true)}>
+                    <Trash2 className="size-4" /> {isId ? "Hapus permanen" : "Delete permanently"}
+                  </Button>
+                )}
+              </>
+            )}
+          </div>
+        )}
       </div>
 
       <Card className="overflow-hidden rounded-3xl">
         <div className="overflow-x-auto max-[760px]:hidden">
-          <Table className="min-w-[1120px]">
+          <Table className="min-w-[920px]">
             <TableHeader>
               <TableRow>
                 <TableHead className="w-12">
@@ -169,7 +267,6 @@ export function GuestList({ onAddGuest, onStartBlast }: GuestListProps) {
                   />
                 </TableHead>
                 <TableHead>{isId ? "Tamu" : "Guest"}</TableHead>
-                <TableHead>WhatsApp</TableHead>
                 <TableHead>Pax</TableHead>
                 <TableHead>RSVP</TableHead>
                 <TableHead>{isId ? "Label" : "Labels"}</TableHead>
@@ -191,14 +288,18 @@ export function GuestList({ onAddGuest, onStartBlast }: GuestListProps) {
                       label={`${isId ? "Pilih" : "Select"} ${guest.name}`}
                     />
                   </TableCell>
-                  <TableCell className="font-medium">
-                    <span className="flex items-center gap-2">
-                      {guest.vip && <Crown className="size-3.5 text-[#b67a00]" />}
-                      {guest.salutation && <span className="text-muted-foreground">{guest.salutation}</span>}
-                      {guest.name}
-                    </span>
+                  <TableCell>
+                    <div className="flex min-w-0 items-center gap-3">
+                      <SideAvatar side={guest.side} isId={isId} />
+                      <div className="min-w-0">
+                        <p className="truncate font-medium">
+                          {guest.salutation && <span className="mr-1 text-muted-foreground">{guest.salutation}</span>}
+                          {guest.name}
+                        </p>
+                        <p className="mt-1 truncate text-xs text-muted-foreground">{guest.whatsapp}</p>
+                      </div>
+                    </div>
                   </TableCell>
-                  <TableCell className="text-muted-foreground">{guest.whatsapp}</TableCell>
                   <TableCell className="text-muted-foreground">{guest.pax}</TableCell>
                   <TableCell><RsvpBadge status={guest.rsvp} isId={isId} /></TableCell>
                   <TableCell>
@@ -217,7 +318,7 @@ export function GuestList({ onAddGuest, onStartBlast }: GuestListProps) {
               ))}
               {filteredGuests.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={7} className="h-40 text-center">
+                  <TableCell colSpan={6} className="h-40 text-center">
                     <Users className="mx-auto size-5 text-muted-foreground" />
                     <p className="mt-2 text-sm font-medium">{isId ? "Tamu tidak ditemukan" : "No guests found"}</p>
                     <p className="mt-1 text-xs text-muted-foreground">{isId ? "Coba kata kunci lain." : "Try another search term."}</p>
@@ -238,14 +339,15 @@ export function GuestList({ onAddGuest, onStartBlast }: GuestListProps) {
               />
               <div className="min-w-0">
                 <button type="button" className="w-full text-left focus-visible:ring-2 focus-visible:ring-ring" onClick={() => setSelectedGuestId(guest.id)}>
-                  <div className="flex items-start justify-between gap-3">
-                    <span className="flex min-w-0 items-center gap-2 font-medium">
-                      {guest.vip && <Crown className="size-3.5 shrink-0 text-[#b67a00]" />}
-                      <span className="truncate">{guest.salutation} {guest.name}</span>
+                  <div className="flex items-start gap-3">
+                    <span className="flex min-w-0 items-center gap-3">
+                      <SideAvatar side={guest.side} isId={isId} size="large" />
+                      <span className="min-w-0">
+                        <span className="block truncate font-medium">{guest.salutation} {guest.name}</span>
+                        <span className="mt-1 block truncate text-sm text-muted-foreground">{guest.whatsapp} · {guest.pax} pax</span>
+                      </span>
                     </span>
-                    <RsvpBadge status={guest.rsvp} isId={isId} />
                   </div>
-                  <p className="mt-2 text-sm text-muted-foreground">{guest.whatsapp} · {guest.pax} pax</p>
                 </button>
                 <div className="mt-3"><ColoredLabels names={guest.labels} definitions={guestLabels} isId={isId} /></div>
                 <div className="mt-3">
@@ -274,9 +376,9 @@ export function GuestList({ onAddGuest, onStartBlast }: GuestListProps) {
           {selectedGuest && (
             <>
               <SheetHeader>
-                <SheetTitle className="flex items-center gap-2">
-                  {selectedGuest.vip && <Crown className="size-5 text-[#b67a00]" />}
-                  {selectedGuest.salutation} {selectedGuest.name}
+                <SheetTitle className="flex items-center gap-3">
+                  <SideAvatar side={selectedGuest.side} isId={isId} size="large" />
+                  <span>{selectedGuest.salutation} {selectedGuest.name}</span>
                 </SheetTitle>
                 <SheetDescription>{isId ? "Detail tamu dan status RSVP" : "Guest details and RSVP status"}</SheetDescription>
               </SheetHeader>
@@ -310,6 +412,36 @@ export function GuestList({ onAddGuest, onStartBlast }: GuestListProps) {
       </Sheet>
       <MessageTemplateDialog open={templateDialogOpen} onOpenChange={setTemplateDialogOpen} />
     </div>
+  );
+}
+
+function SideAvatar({
+  side,
+  isId,
+  size = "default",
+}: {
+  side: GuestWithId["side"];
+  isId: boolean;
+  size?: "default" | "large";
+}) {
+  const label = guestSideLabel(side, isId);
+  const initial = side === "groom" ? (isId ? "P" : "G") : (isId ? "W" : "B");
+
+  return (
+    <span
+      role="img"
+      aria-label={label}
+      title={label}
+      className={`inline-flex shrink-0 items-center justify-center rounded-full border font-semibold ${
+        size === "large" ? "size-9 text-sm" : "size-8 text-xs"
+      } ${
+        side === "groom"
+          ? "border-[#d7d3ff] bg-[#f4f2ff] text-[#514ba5]"
+          : "border-[#f0d7c9] bg-[#fff6ef] text-[#9a572d]"
+      }`}
+    >
+      {initial}
+    </span>
   );
 }
 

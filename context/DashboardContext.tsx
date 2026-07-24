@@ -3,9 +3,15 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, useTransition } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import type {
+  CreateGuestReviewSessionInput,
   Guest,
+  GuestCapacityPlan,
+  GuestPlanningStatus,
   GuestResponseInput,
   GuestLabel,
+  GuestReviewAttachment,
+  GuestReviewSession,
+  GuestReviewSessionStatus,
   GuestWithId,
   InvitationBlock,
   InvitationData,
@@ -24,6 +30,15 @@ import { menuLabel } from "@/lib/i18n";
 import { DEFAULT_BLOCKS, getTemplate } from "@/lib/templates";
 import { invitationHost, invitationUrl } from "@/lib/invitation-url";
 import { DASHBOARD_ROUTES, menuFromPathname } from "@/lib/dashboard-routes";
+import {
+  createReviewToken,
+  DEFAULT_GUEST_CAPACITY_PLAN,
+  readReviewSessions,
+  REVIEW_SESSIONS_CHANGED_EVENT,
+  REVIEW_SESSIONS_STORAGE_KEY,
+  updateStoredReviewSession,
+  writeReviewSessions,
+} from "@/lib/guest-planning";
 
 type WorkspaceRecord = {
   summary: WorkspaceSummary;
@@ -32,9 +47,11 @@ type WorkspaceRecord = {
   selectedTemplate: TemplateId;
   blocks: InvitationBlock[];
   guests: GuestWithId[];
+  capacityPlan: GuestCapacityPlan;
   guestLabels: GuestLabel[];
   waTemplate: string;
   waBlasts: WABlastCampaign[];
+  demoSeedVersion?: number;
 };
 
 type DashboardContextValue = {
@@ -66,6 +83,14 @@ type DashboardContextValue = {
   createWorkspace: (input: WorkspaceCreationInput) => string;
   guests: GuestWithId[];
   guestLabels: GuestLabel[];
+  capacityPlan: GuestCapacityPlan;
+  setCapacityPlan: (updates: Partial<GuestCapacityPlan>) => void;
+  reviewSessions: GuestReviewSession[];
+  createGuestReviewSession: (input: CreateGuestReviewSessionInput) => string;
+  setGuestReviewDecision: (token: string, guestId: string, decision: GuestPlanningStatus) => void;
+  addGuestReviewAttachment: (token: string, attachment: GuestReviewAttachment) => void;
+  setGuestReviewSessionStatus: (token: string, status: GuestReviewSessionStatus) => void;
+  setGuestsPlanningStatus: (ids: string[], status: GuestPlanningStatus) => void;
   addGuest: (guest: Guest) => void;
   deleteGuests: (ids: string[]) => void;
   createGuestLabel: (name: string) => GuestLabel;
@@ -81,6 +106,7 @@ type DashboardContextValue = {
 
 const WORKSPACE_STORAGE_KEY = "riuh-merekah-workspaces-v1";
 const DEFAULT_WORKSPACE_ID = DEFAULT_WORKSPACES[0].id;
+const CURRENT_DEMO_SEED_VERSION = 2;
 const DashboardContext = createContext<DashboardContextValue | null>(null);
 
 export function DashboardProvider({ children }: { children: React.ReactNode }) {
@@ -98,31 +124,60 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   const [workspaceRecords, setWorkspaceRecords] = useState<Record<string, WorkspaceRecord>>(createInitialWorkspaceRecords);
   const [activeWorkspaceId, setActiveWorkspaceState] = useState(DEFAULT_WORKSPACE_ID);
   const [workspaceStorageReady, setWorkspaceStorageReady] = useState(false);
+  const [reviewSessionRecords, setReviewSessionRecords] = useState<GuestReviewSession[]>([]);
 
   useEffect(() => {
     setPendingMenu(null);
   }, [pathname]);
 
   useEffect(() => {
+    let nextRecords = createInitialWorkspaceRecords();
+    let nextActiveWorkspaceId = DEFAULT_WORKSPACE_ID;
+
     try {
       const raw = window.localStorage.getItem(WORKSPACE_STORAGE_KEY);
       if (raw) {
         const saved = JSON.parse(raw) as { records?: Record<string, WorkspaceRecord>; activeWorkspaceId?: string };
         if (saved.records && Object.keys(saved.records).length > 0) {
           const fallbackWorkspaceId = Object.keys(saved.records)[0];
-          const hydratedRecords = hydrateWorkspaceRecords(saved.records);
-          setWorkspaceRecords(hydratedRecords);
-          setActiveWorkspaceState(
-            saved.activeWorkspaceId && hydratedRecords[saved.activeWorkspaceId]
-              ? saved.activeWorkspaceId
-              : fallbackWorkspaceId,
-          );
+          nextRecords = hydrateWorkspaceRecords(saved.records);
+          nextActiveWorkspaceId = saved.activeWorkspaceId && nextRecords[saved.activeWorkspaceId]
+            ? saved.activeWorkspaceId
+            : fallbackWorkspaceId;
         }
       }
     } catch {
       // Invalid local demo state falls back to the bundled workspace.
     }
+
+    const storedSessions = readReviewSessions();
+    const migratedSessions = migrateLegacyReviewSessions(storedSessions, nextRecords);
+    if (migratedSessions.some((session, index) => session !== storedSessions[index])) {
+      writeReviewSessions(migratedSessions);
+    }
+    setReviewSessionRecords(migratedSessions);
+    setWorkspaceRecords(applyReviewDecisionsToRecords(nextRecords, migratedSessions));
+    setActiveWorkspaceState(nextActiveWorkspaceId);
     setWorkspaceStorageReady(true);
+  }, []);
+
+  useEffect(() => {
+    const syncReviewSessions = () => {
+      const sessions = readReviewSessions();
+      setReviewSessionRecords(sessions);
+      setWorkspaceRecords((current) => applyReviewDecisionsToRecords(current, sessions));
+    };
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === REVIEW_SESSIONS_STORAGE_KEY) syncReviewSessions();
+    };
+    window.addEventListener(REVIEW_SESSIONS_CHANGED_EVENT, syncReviewSessions);
+    window.addEventListener("storage", handleStorage);
+    window.addEventListener("focus", syncReviewSessions);
+    return () => {
+      window.removeEventListener(REVIEW_SESSIONS_CHANGED_EVENT, syncReviewSessions);
+      window.removeEventListener("storage", handleStorage);
+      window.removeEventListener("focus", syncReviewSessions);
+    };
   }, []);
 
   useEffect(() => {
@@ -136,10 +191,15 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   const selectedTemplate = activeWorkspace.selectedTemplate;
   const blocks = activeWorkspace.blocks;
   const guests = activeWorkspace.guests;
+  const capacityPlan = activeWorkspace.capacityPlan;
   const guestLabels = activeWorkspace.guestLabels;
   const waTemplate = activeWorkspace.waTemplate;
   const waBlasts = activeWorkspace.waBlasts;
   const workspaces = useMemo(() => Object.values(workspaceRecords).map((workspace) => workspace.summary), [workspaceRecords]);
+  const reviewSessions = useMemo(
+    () => reviewSessionRecords.filter((session) => session.workspaceId === activeWorkspaceId),
+    [activeWorkspaceId, reviewSessionRecords],
+  );
 
   const activeTitle = useMemo(() => menuLabel(language, activeMenu), [activeMenu, language]);
 
@@ -195,6 +255,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       selectedTemplate: input.templateId,
       blocks: cloneBlocks(DEFAULT_BLOCKS),
       guests: [],
+      capacityPlan: { ...DEFAULT_GUEST_CAPACITY_PLAN },
       guestLabels: [],
       waTemplate: WA_TEMPLATE_DEFAULT,
       waBlasts: [],
@@ -273,14 +334,153 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     }));
   }, [updateActiveWorkspace]);
 
+  const setCapacityPlan = useCallback((updates: Partial<GuestCapacityPlan>) => {
+    updateActiveWorkspace((workspace) => ({
+      ...workspace,
+      capacityPlan: {
+        ...workspace.capacityPlan,
+        ...updates,
+        maxPax: Math.max(1, Math.round(updates.maxPax ?? workspace.capacityPlan.maxPax)),
+        groomPercent: Math.min(100, Math.max(0, Math.round(updates.groomPercent ?? workspace.capacityPlan.groomPercent))),
+      },
+    }));
+  }, [updateActiveWorkspace]);
+
+  const createGuestReviewSession = useCallback((input: CreateGuestReviewSessionInput) => {
+    const token = createReviewToken();
+    const selectedGuests = guests.filter((guest) => input.guestIds.includes(guest.id));
+    const session: GuestReviewSession = {
+      id: `review-${Date.now()}`,
+      token,
+      workspaceId: activeWorkspaceId,
+      reviewerName: input.reviewerName.trim(),
+      side: input.filterSide === "all" ? (selectedGuests[0]?.side ?? "groom") : input.filterSide,
+      mode: "digital",
+      filterSide: input.filterSide,
+      filterLabels: [...input.filterLabels],
+      filtersApplied: true,
+      capacityPlan: { ...capacityPlan },
+      status: "active",
+      createdAt: new Date().toISOString(),
+      completedAt: null,
+      attachments: [],
+      items: selectedGuests.map((guest) => ({
+        guestId: guest.id,
+        name: guest.name,
+        pax: guest.pax,
+        type: guest.type,
+        side: guest.side,
+        labels: [...guest.labels],
+        decision: "candidate",
+        decidedAt: null,
+      })),
+    };
+    const nextSessions = [session, ...reviewSessionRecords];
+    setReviewSessionRecords(nextSessions);
+    writeReviewSessions(nextSessions);
+    return token;
+  }, [activeWorkspaceId, capacityPlan, guests, reviewSessionRecords]);
+
+  const setGuestReviewDecision = useCallback((token: string, guestId: string, decision: GuestPlanningStatus) => {
+    const decidedAt = decision === "candidate" ? null : new Date().toISOString();
+    const updateSession = (session: GuestReviewSession): GuestReviewSession => {
+      const items = session.items.map((item) => item.guestId === guestId
+        ? { ...item, decision, decidedAt }
+        : item);
+      const completed = items.length > 0 && items.every((item) => item.decision !== "candidate");
+      return {
+        ...session,
+        items,
+        status: session.status === "closed"
+          ? "closed"
+          : completed
+            ? "completed"
+            : session.status === "completed"
+              ? "active"
+              : session.status,
+        completedAt: completed ? new Date().toISOString() : null,
+      };
+    };
+    setReviewSessionRecords((current) => current.map((session) => session.token === token ? updateSession(session) : session));
+    updateStoredReviewSession(token, updateSession);
+    updateActiveWorkspace((workspace) => ({
+      ...workspace,
+      guests: workspace.guests.map((guest) => guest.id === guestId ? { ...guest, planningStatus: decision } : guest),
+    }));
+  }, [updateActiveWorkspace]);
+
+  const addGuestReviewAttachment = useCallback((token: string, attachment: GuestReviewAttachment) => {
+    const updateSession = (session: GuestReviewSession): GuestReviewSession => ({
+      ...session,
+      attachments: [...session.attachments, attachment],
+      status: "reconciling",
+    });
+    setReviewSessionRecords((current) => current.map((session) => session.token === token ? updateSession(session) : session));
+    updateStoredReviewSession(token, updateSession);
+  }, []);
+
+  const setGuestReviewSessionStatus = useCallback((token: string, status: GuestReviewSessionStatus) => {
+    const updateSession = (session: GuestReviewSession): GuestReviewSession => ({ ...session, status });
+    setReviewSessionRecords((current) => current.map((session) => session.token === token ? updateSession(session) : session));
+    updateStoredReviewSession(token, updateSession);
+  }, []);
+
+  const setGuestsPlanningStatus = useCallback((ids: string[], planningStatus: GuestPlanningStatus) => {
+    if (ids.length === 0) return;
+    const selectedIds = new Set(ids);
+    const decidedAt = planningStatus === "candidate" ? null : new Date().toISOString();
+    const nextSessions = reviewSessionRecords.map((session) => {
+      if (session.workspaceId !== activeWorkspaceId) return session;
+
+      let changed = false;
+      const items = session.items.map((item) => {
+        if (!selectedIds.has(item.guestId)) return item;
+        changed = true;
+        return { ...item, decision: planningStatus, decidedAt };
+      });
+      if (!changed) return session;
+
+      const completed = items.length > 0 && items.every((item) => item.decision !== "candidate");
+      return {
+        ...session,
+        items,
+        status: session.status === "closed"
+          ? "closed" as const
+          : completed
+            ? "completed" as const
+            : session.status === "completed"
+              ? "active" as const
+              : session.status,
+        completedAt: completed ? new Date().toISOString() : null,
+      };
+    });
+
+    setReviewSessionRecords(nextSessions);
+    writeReviewSessions(nextSessions);
+    updateActiveWorkspace((workspace) => ({
+      ...workspace,
+      guests: workspace.guests.map((guest) => selectedIds.has(guest.id)
+        ? { ...guest, planningStatus }
+        : guest),
+    }));
+  }, [activeWorkspaceId, reviewSessionRecords, updateActiveWorkspace]);
+
   const deleteGuests = useCallback((ids: string[]) => {
     if (ids.length === 0) return;
     const selectedIds = new Set(ids);
+    const nextSessions = reviewSessionRecords.map((session) => {
+      if (session.workspaceId !== activeWorkspaceId) return session;
+      const items = session.items.filter((item) => !selectedIds.has(item.guestId));
+      return items.length === session.items.length ? session : { ...session, items };
+    });
+
+    setReviewSessionRecords(nextSessions);
+    writeReviewSessions(nextSessions);
     updateActiveWorkspace((workspace) => ({
       ...workspace,
       guests: workspace.guests.filter((guest) => !selectedIds.has(guest.id)),
     }));
-  }, [updateActiveWorkspace]);
+  }, [activeWorkspaceId, reviewSessionRecords, updateActiveWorkspace]);
 
   const createGuestLabel = useCallback((name: string) => {
     const normalizedName = name.trim();
@@ -329,6 +529,8 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
         : [...workspace.guests, {
             id: `g-${Date.now()}`,
             type: "personal" as const,
+            side: "groom" as const,
+            planningStatus: "candidate" as const,
             vip: false,
             salutation: "",
             labels: ["RSVP"],
@@ -437,6 +639,14 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     createWorkspace,
     guests,
     guestLabels,
+    capacityPlan,
+    setCapacityPlan,
+    reviewSessions,
+    createGuestReviewSession,
+    setGuestReviewDecision,
+    addGuestReviewAttachment,
+    setGuestReviewSessionStatus,
+    setGuestsPlanningStatus,
     addGuest,
     deleteGuests,
     createGuestLabel,
@@ -474,6 +684,14 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     createWorkspace,
     guests,
     guestLabels,
+    capacityPlan,
+    setCapacityPlan,
+    reviewSessions,
+    createGuestReviewSession,
+    setGuestReviewDecision,
+    addGuestReviewAttachment,
+    setGuestReviewSessionStatus,
+    setGuestsPlanningStatus,
     addGuest,
     deleteGuests,
     createGuestLabel,
@@ -500,9 +718,11 @@ function createInitialWorkspaceRecords(): Record<string, WorkspaceRecord> {
       selectedTemplate: "sunny",
       blocks: cloneBlocks(DEFAULT_BLOCKS),
       guests: MOCK_GUESTS.map((guest) => ({ ...guest, labels: [...guest.labels] })),
+      capacityPlan: { ...DEFAULT_GUEST_CAPACITY_PLAN },
       guestLabels: DEFAULT_GUEST_LABELS.map((label) => ({ ...label })),
       waTemplate: WA_TEMPLATE_DEFAULT,
       waBlasts: [],
+      demoSeedVersion: CURRENT_DEMO_SEED_VERSION,
     },
   };
 }
@@ -531,20 +751,132 @@ function personalizeWABlast(template: string, guestName: string, link: string) {
 }
 
 function hydrateWorkspaceRecords(records: Record<string, WorkspaceRecord>) {
-  return Object.fromEntries(Object.entries(records).map(([id, workspace]) => [
-    id,
-    {
+  return Object.fromEntries(Object.entries(records).map(([id, workspace]) => {
+    let guests = (workspace.guests ?? []).map((guest) => ({
+      ...guest,
+      side: guest.side ?? "groom",
+      planningStatus: guest.planningStatus ?? "candidate",
+      wish: guest.wish ?? "",
+      wishStatus: guest.wishStatus ?? null,
+      wishSubmittedAt: guest.wishSubmittedAt ?? null,
+    }));
+    let guestLabels = workspace.guestLabels ?? deriveGuestLabels(guests);
+
+    const shouldMigrateDemoSeed = id === DEFAULT_WORKSPACE_ID
+      && (workspace.demoSeedVersion ?? 0) < CURRENT_DEMO_SEED_VERSION
+      && guests.some((guest) => MOCK_GUESTS.some((seed) => seed.id === guest.id));
+
+    if (shouldMigrateDemoSeed) {
+      const seedById = new Map(MOCK_GUESTS.map((guest) => [guest.id, guest]));
+      guests = guests.map((guest) => {
+        const seed = seedById.get(guest.id);
+        return seed
+          ? {
+              ...guest,
+              type: seed.type,
+              side: seed.side,
+              planningStatus: seed.planningStatus,
+              vip: seed.vip,
+              labels: [...seed.labels],
+            }
+          : guest;
+      });
+
+      const existingGuestIds = new Set(guests.map((guest) => guest.id));
+      guests = [
+        ...guests,
+        ...MOCK_GUESTS
+          .filter((guest) => !existingGuestIds.has(guest.id))
+          .map((guest) => ({ ...guest, labels: [...guest.labels] })),
+      ];
+
+      const existingLabelNames = new Set(guestLabels.map((label) => label.name.toLocaleLowerCase()));
+      guestLabels = [
+        ...guestLabels,
+        ...DEFAULT_GUEST_LABELS
+          .filter((label) => !existingLabelNames.has(label.name.toLocaleLowerCase()))
+          .map((label) => ({ ...label })),
+      ];
+    }
+
+    return [
+      id,
+      {
       ...workspace,
       invitation: { ...DEFAULT_INVITATION, ...workspace.invitation },
-      guests: (workspace.guests ?? []).map((guest) => ({
-        ...guest,
-        wish: guest.wish ?? "",
-        wishStatus: guest.wishStatus ?? null,
-        wishSubmittedAt: guest.wishSubmittedAt ?? null,
-      })),
-      guestLabels: workspace.guestLabels ?? deriveGuestLabels(workspace.guests ?? []),
+      capacityPlan: { ...DEFAULT_GUEST_CAPACITY_PLAN, ...workspace.capacityPlan },
+      guests,
+      guestLabels,
       waTemplate: workspace.waTemplate ?? WA_TEMPLATE_DEFAULT,
       waBlasts: workspace.waBlasts ?? [],
+      demoSeedVersion: shouldMigrateDemoSeed ? CURRENT_DEMO_SEED_VERSION : workspace.demoSeedVersion,
+      },
+    ];
+  }));
+}
+
+function migrateLegacyReviewSessions(
+  sessions: GuestReviewSession[],
+  records: Record<string, WorkspaceRecord>,
+) {
+  return sessions.map((session) => {
+    if (session.filtersApplied) return session;
+
+    const filterSide = session.filterSide ?? session.side;
+    const filterLabels = session.filterLabels ?? [];
+    const existingItems = new Map(session.items.map((item) => [item.guestId, item]));
+    const workspaceGuests = records[session.workspaceId]?.guests ?? [];
+    const matchingGuests = workspaceGuests.filter((guest) => (
+      (filterSide === "all" || guest.side === filterSide)
+      && (filterLabels.length === 0 || filterLabels.some((label) => guest.labels.includes(label)))
+    ));
+
+    return {
+      ...session,
+      filterSide,
+      filterLabels,
+      filtersApplied: true,
+      items: matchingGuests.map((guest) => {
+        const existingItem = existingItems.get(guest.id);
+        return {
+          guestId: guest.id,
+          name: guest.name,
+          pax: guest.pax,
+          type: guest.type,
+          side: guest.side,
+          labels: [...guest.labels],
+          decision: existingItem?.decision ?? "candidate",
+          decidedAt: existingItem?.decidedAt ?? null,
+        };
+      }),
+    };
+  });
+}
+
+function applyReviewDecisionsToRecords(
+  records: Record<string, WorkspaceRecord>,
+  sessions: GuestReviewSession[],
+) {
+  const latestDecisions = new Map<string, { decision: GuestPlanningStatus; decidedAt: string }>();
+  sessions.forEach((session) => {
+    session.items.forEach((item) => {
+      if (item.decision === "candidate" || !item.decidedAt) return;
+      const key = `${session.workspaceId}:${item.guestId}`;
+      const current = latestDecisions.get(key);
+      if (!current || item.decidedAt > current.decidedAt) {
+        latestDecisions.set(key, { decision: item.decision, decidedAt: item.decidedAt });
+      }
+    });
+  });
+
+  return Object.fromEntries(Object.entries(records).map(([workspaceId, workspace]) => [
+    workspaceId,
+    {
+      ...workspace,
+      guests: workspace.guests.map((guest) => {
+        const latest = latestDecisions.get(`${workspaceId}:${guest.id}`);
+        return latest ? { ...guest, planningStatus: latest.decision } : guest;
+      }),
     },
   ]));
 }
