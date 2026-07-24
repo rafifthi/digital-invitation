@@ -28,6 +28,8 @@ export type Database = {
           venue_address: string | null;
           maps_url: string | null;
           youtube_url: string | null;
+          guest_capacity: number;
+          groom_allocation_percent: number;
           status: "draft" | "published" | "archived";
           settings: Json;
           created_at: string;
@@ -51,6 +53,8 @@ export type Database = {
           venue_address?: string | null;
           maps_url?: string | null;
           youtube_url?: string | null;
+          guest_capacity?: number;
+          groom_allocation_percent?: number;
           status?: "draft" | "published" | "archived";
           settings?: Json;
           created_at?: string;
@@ -112,6 +116,11 @@ export type Database = {
           invitation_id: string;
           name: string;
           phone_number: string;
+          guest_type: "personal" | "group";
+          guest_side: "groom" | "bride";
+          planning_status: "candidate" | "approved" | "review" | "removed";
+          pax: number;
+          labels: Json;
           rsvp_status: "pending" | "attending" | "not_attending";
           wish_text: string | null;
           wish_status: "review" | "published" | null;
@@ -125,6 +134,11 @@ export type Database = {
           invitation_id: string;
           name: string;
           phone_number: string;
+          guest_type?: "personal" | "group";
+          guest_side?: "groom" | "bride";
+          planning_status?: "candidate" | "approved" | "review" | "removed";
+          pax?: number;
+          labels?: Json;
           rsvp_status?: "pending" | "attending" | "not_attending";
           wish_text?: string | null;
           wish_status?: "review" | "published" | null;
@@ -134,6 +148,85 @@ export type Database = {
           updated_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["guests"]["Insert"]>;
+      };
+      guest_review_sessions: {
+        Row: {
+          id: string;
+          invitation_id: string;
+          token_hash: string;
+          reviewer_name: string;
+          guest_side: "groom" | "bride";
+          mode: "digital" | "print";
+          status: "active" | "completed" | "reconciling" | "closed";
+          capacity_snapshot: number;
+          groom_allocation_snapshot: number;
+          completed_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          invitation_id: string;
+          token_hash: string;
+          reviewer_name: string;
+          guest_side: "groom" | "bride";
+          mode?: "digital" | "print";
+          status?: "active" | "completed" | "reconciling" | "closed";
+          capacity_snapshot: number;
+          groom_allocation_snapshot: number;
+          completed_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["guest_review_sessions"]["Insert"]>;
+      };
+      guest_review_items: {
+        Row: {
+          id: string;
+          session_id: string;
+          guest_id: string | null;
+          guest_name_snapshot: string;
+          guest_type_snapshot: "personal" | "group";
+          guest_side_snapshot: "groom" | "bride";
+          pax_snapshot: number;
+          labels_snapshot: Json;
+          decision: "candidate" | "approved" | "review" | "removed";
+          decided_at: string | null;
+          sort_order: number;
+        };
+        Insert: {
+          id?: string;
+          session_id: string;
+          guest_id?: string | null;
+          guest_name_snapshot: string;
+          guest_type_snapshot: "personal" | "group";
+          guest_side_snapshot: "groom" | "bride";
+          pax_snapshot: number;
+          labels_snapshot?: Json;
+          decision?: "candidate" | "approved" | "review" | "removed";
+          decided_at?: string | null;
+          sort_order?: number;
+        };
+        Update: Partial<Database["public"]["Tables"]["guest_review_items"]["Insert"]>;
+      };
+      guest_review_attachments: {
+        Row: {
+          id: string;
+          session_id: string;
+          storage_path: string;
+          file_name: string;
+          mime_type: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          session_id: string;
+          storage_path: string;
+          file_name: string;
+          mime_type: string;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["guest_review_attachments"]["Insert"]>;
       };
       wa_blasts: {
         Row: {

@@ -19,6 +19,8 @@ type CreateGuestFormProps = {
 
 const EMPTY_GUEST: Guest = {
   type: "personal",
+  side: "groom",
+  planningStatus: "candidate",
   vip: false,
   salutation: "",
   name: "",
@@ -50,6 +52,18 @@ export function CreateGuestForm({ onSubmit, onSuccess }: CreateGuestFormProps) {
   return (
     <>
       <div className="grid gap-5 py-4">
+        <Field label={isId ? "Pihak tamu" : "Guest side"}>
+          <RadioCards
+            name="guest-side"
+            value={form.side}
+            options={[
+              { value: "groom", label: isId ? "Pihak pria" : "Groom side", description: isId ? "Keluarga atau relasi mempelai pria" : "Groom family or connections" },
+              { value: "bride", label: isId ? "Pihak wanita" : "Bride side", description: isId ? "Keluarga atau relasi mempelai wanita" : "Bride family or connections" },
+            ]}
+            onChange={(value) => setField("side", value as Guest["side"])}
+          />
+        </Field>
+
         <Field label={isId ? "Tipe tamu" : "Guest type"}>
           <RadioCards
             name="guest-type"

@@ -74,6 +74,89 @@ select {
   letter-spacing: -0.02em;
 }
 
+.capacity-range {
+  height: 20px;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.capacity-range::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 999px;
+  background: linear-gradient(
+    to right,
+    #7772df 0%,
+    #7772df var(--capacity-progress, 50%),
+    #e8e8ec var(--capacity-progress, 50%),
+    #e8e8ec 100%
+  );
+}
+
+.capacity-range::-moz-range-track {
+  height: 6px;
+  border-radius: 999px;
+  background: #e8e8ec;
+}
+
+.capacity-range::-moz-range-progress {
+  height: 6px;
+  border-radius: 999px;
+  background: #7772df;
+}
+
+.capacity-range::-webkit-slider-thumb {
+  width: 22px;
+  height: 22px;
+  margin-top: -8px;
+  appearance: none;
+  border: 2px solid #7772df;
+  border-radius: 999px;
+  background: #fefeff;
+  box-shadow: 0 2px 7px rgba(24, 25, 37, 0.14);
+}
+
+.capacity-range::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border: 2px solid #7772df;
+  border-radius: 999px;
+  background: #fefeff;
+  box-shadow: 0 2px 7px rgba(24, 25, 37, 0.14);
+}
+
+.capacity-range:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 3px;
+  border-radius: 999px;
+}
+
+.review-icon-button {
+  display: inline-flex;
+  width: 44px;
+  height: 44px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  color: #5f5861;
+  transition:
+    background-color 180ms ease-out,
+    transform 180ms ease-out;
+}
+
+.review-icon-button:hover {
+  background: #f2edf0;
+}
+
+.review-icon-button:active {
+  transform: translateY(1px);
+}
+
+.review-icon-button:focus-visible {
+  outline: 2px solid #8b82e8;
+  outline-offset: 2px;
+}
+
 ::selection {
   background: #e7e5ff;
   color: var(--color-carbon);
@@ -91,6 +174,26 @@ select {
     transition-duration: 0.01ms !important;
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
+  }
+}
+
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 10mm;
+  }
+
+  .print-hidden {
+    display: none !important;
+  }
+
+  .review-print-sheet {
+    margin: 0;
+    padding: 0;
+  }
+
+  .review-print-row {
+    break-inside: avoid;
   }
 }
 
